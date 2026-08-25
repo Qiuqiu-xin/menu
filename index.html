@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>二人食记</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="sheet-wrap">
+    <div class="sheet">
+      <header class="site-header">
+        <h1 class="site-title" id="siteTitle">二人食记</h1>
+        <div class="site-divider"><span class="dot"></span></div>
+        <p class="site-sub" id="siteSub">把两个人吃过的每一顿饭，都好好收着。</p>
+        <p class="stats" id="stats"></p>
+      </header>
+
+      <main class="container">
+        <nav class="filters" id="filters" aria-label="筛选"></nav>
+        <section id="timeline" aria-label="用餐时间线"></section>
+        <p class="empty" id="empty" hidden></p>
+      </main>
+
+      <footer class="site-footer">
+        <p id="siteFooter">好好吃饭 · 慢慢记录</p>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 页面缩放控制（鼠标移到右上角时显示） -->
+  <div class="zoom-hotzone" id="zoomHotzone" aria-label="页面缩放">
+    <div class="zoom-control" id="zoomControl">
+      <button class="zoom-btn" id="zoomOut" title="缩小">−</button>
+      <span class="zoom-value" id="zoomValue">100%</span>
+      <button class="zoom-btn" id="zoomIn" title="放大">＋</button>
+    </div>
+  </div>
+
+  <!-- 右侧月份导航（滚动时滑出） -->
+  <nav class="side-nav" id="sideNav" aria-label="月份导航"></nav>
+
+  <!-- 添加 / 编辑弹窗 -->
+  <dialog id="mealDialog" class="meal-dialog">
+    <form id="mealForm" class="dialog-card" novalidate>
+      <h2 class="dialog-title" id="dialogTitle">添加一餐</h2>
+
+      <div class="field">
+        <label class="field-label">照片 *</label>
+        <div class="photo-row">
+          <img id="photoPreview" class="photo-preview" alt="照片预览" hidden />
+          <div class="photo-inputs">
+            <label class="btn file-btn" id="fileBtn">
+              <span id="fileBtnText">选择照片文件上传</span>
+              <input type="file" id="photoFile" accept=".jpg,.jpeg,.png,.webp,.gif" hidden />
+            </label>
+            <p class="field-hint">上传的照片会保存到 photos/ 文件夹。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="titleInput">标题 *</label>
+        <input id="titleInput" class="text-input" type="text" maxlength="200"
+               placeholder="如：晚餐：糖醋排骨 + 番茄蛋汤" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="dateInput">日期 *</label>
+          <input id="dateInput" class="text-input" type="date" />
+        </div>
+        <div class="field">
+          <label class="field-label" for="mealInput">餐次</label>
+          <select id="mealInput" class="text-input">
+            <option>早餐</option>
+            <option>午餐</option>
+            <option>晚餐</option>
+            <option>加餐</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="tagsInput">标签（逗号分隔）</label>
+        <input id="tagsInput" class="text-input" type="text" maxlength="200"
+               placeholder="如：家常菜, 快手菜" />
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="notesInput">备注</label>
+        <textarea id="notesInput" class="text-input" rows="3" maxlength="2000"></textarea>
+      </div>
+
+      <p class="form-error" id="formError" hidden></p>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="cancelBtn">取消</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 图片放大查看 -->
+  <dialog id="viewDialog" class="view-dialog">
+    <div class="view-card">
+      <button class="view-close" id="viewClose" aria-label="关闭">✕</button>
+      <div class="view-photo-head">
+        <span class="view-date" id="viewDate"></span>
+      </div>
+      <div class="view-photo-box" id="viewPhotoBox">
+        <img id="viewPhoto" class="view-photo" alt="" />
+      </div>
+      <div class="view-photo-zoom" aria-label="照片缩放">
+        <button class="zoom-btn" id="viewZoomOut" title="缩小照片">−</button>
+        <span class="zoom-value" id="viewZoomValue">100%</span>
+        <button class="zoom-btn" id="viewZoomIn" title="放大照片">＋</button>
+      </div>
+      <div class="view-body">
+        <h3 class="view-title" id="viewTitle"></h3>
+        <div class="view-meta">
+          <span class="chip meal" id="viewMeal"></span>
+          <span class="view-tags" id="viewTags"></span>
+        </div>
+        <p class="view-notes" id="viewNotes"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- 右键内观设置面板（背景颜色 + 字体） -->
+  <div class="color-pop" id="colorPop" hidden>
+    <h4 class="color-pop-title">内观设置</h4>
+
+    <p class="pop-label">背景颜色</p>
+    <div class="color-swatches" id="colorSwatches"></div>
+    <div class="color-pop-row">
+      <label class="color-custom-label" title="打开系统取色器">
+        <input type="color" id="colorCustom" class="color-custom" value="#f0e9f8" />
+      </label>
+      <input type="text" id="colorHex" class="hex-input" placeholder="#f0e9f8" maxlength="7" />
+      <button class="zoom-btn" id="colorApply" title="应用">✓</button>
+    </div>
+
+    <p class="pop-label">字体</p>
+    <div class="color-swatches" id="inkSwatches"></div>
+    <div class="color-pop-row">
+      <label class="color-custom-label" title="打开系统取色器">
+        <input type="color" id="inkCustom" class="color-custom" value="#483a5e" />
+      </label>
+      <input type="text" id="inkHex" class="hex-input" placeholder="#483a5e" maxlength="7" />
+      <button class="zoom-btn" id="inkApply" title="应用">✓</button>
+    </div>
+    <label class="pop-field">标题字体
+      <select id="titleFontSelect" class="pop-select"></select>
+    </label>
+    <label class="pop-field">正文字体
+      <select id="bodyFontSelect" class="pop-select"></select>
+    </label>
+
+    <button class="btn color-reset" id="colorReset">恢复默认</button>
+  </div>
+
+  <script src="data/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

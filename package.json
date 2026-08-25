@@ -1,0 +1,11 @@
+{
+  "name": "ershi-ji",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "二人食记 — 记录我们做过的每一顿饭（本地服务 + 网页增删改）",
+  "scripts": {
+    "start": "node server.js",
+    "add": "node scripts/add.js"
+  }
+}
