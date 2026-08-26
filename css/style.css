@@ -246,7 +246,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 575px;
+  max-width: 529px;
   margin: 0 auto 10px;
 }
 
@@ -298,7 +298,7 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   width: 100%;
-  max-width: 575px;
+  max-width: 529px;
   margin: 0 auto 4px;
 }
 
@@ -315,7 +315,7 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   width: 100%;
-  max-width: 575px;
+  max-width: 529px;
   margin: 0 auto;
 }
 
