@@ -270,6 +270,7 @@
     if (state.serverMode) {
       actions =
         '<div class="card-actions">' +
+          '<button class="mini-btn" data-action="save-img" data-id="' + id + '" title="把这张卡片保存为图片">存图</button>' +
           '<button class="mini-btn" data-action="edit" data-id="' + id + '">编辑</button>' +
           '<button class="mini-btn danger" data-action="delete" data-id="' + id + '">删除</button>' +
         '</div>';
@@ -1183,6 +1184,55 @@
     }
   }
 
+  /** 把一张卡片保存为 PNG 图片 */
+  async function saveCardAsImage(id) {
+    if (typeof html2canvas === 'undefined') {
+      window.alert('图片组件未加载，请刷新重试。');
+      return;
+    }
+    var meal = findMeal(id);
+    var src = document.querySelector('.card[data-id="' + CSS.escape(id) + '"]');
+    if (!src) return;
+
+    // 克隆卡片并去掉操作按钮（编辑/删除/存图），只保留展示内容
+    var clone = src.cloneNode(true);
+    var act = clone.querySelector('.card-actions');
+    if (act) act.remove();
+    clone.classList.remove('expanded');
+
+    // 吸附到离屏容器，保持与原卡片一致的宽度，避免布局错乱
+    var holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + src.offsetWidth + 'px;';
+    holder.appendChild(clone);
+    document.body.appendChild(holder);
+
+    try {
+      // 确保照片加载完成
+      var imgs = Array.prototype.slice.call(clone.querySelectorAll('img'));
+      await Promise.all(imgs.map(function (img) {
+        if (img.complete && img.naturalWidth) return Promise.resolve();
+        return new Promise(function (resolve) { img.onload = resolve; img.onerror = resolve; });
+      }));
+
+      var canvas = await html2canvas(clone, {
+        scale: 2,
+        backgroundColor: '#fdfcff',
+        useCORS: true,
+        logging: false,
+      });
+      var a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = (meal && meal.title ? meal.title : '餐食卡片') + '.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      window.alert('保存图片失败：' + (e.message || ''));
+    } finally {
+      holder.remove();
+    }
+  }
+
   /* ---------- 事件绑定 ---------- */
 
   function bindEvents() {
@@ -1272,6 +1322,7 @@
           var id = act.dataset.id;
           if (act.dataset.action === 'edit') openDialog('edit', findMeal(id));
           else if (act.dataset.action === 'delete') doDelete(id);
+          else if (act.dataset.action === 'save-img') saveCardAsImage(id);
           return;
         }
         // 翻月 / 今天
@@ -1334,6 +1385,7 @@
           var id = act.dataset.id;
           if (act.dataset.action === 'edit') openDialog('edit', findMeal(id));
           else if (act.dataset.action === 'delete') doDelete(id);
+          else if (act.dataset.action === 'save-img') saveCardAsImage(id);
           return;
         }
         // 点击年份标题 → 折叠 / 展开该年
