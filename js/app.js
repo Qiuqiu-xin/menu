@@ -898,11 +898,12 @@
     photo.src = photos[0];
     photo.alt = meal.title || '';
     $('viewTitle').textContent = meal.title || '';
-    $('viewMeal').textContent = meal.meal || '';
     $('viewDate').textContent = fmtFullDate(meal.date);
+    // 餐次 / 分类 / 标签全部动态生成，每次打开完整重写（幂等，不残留静态子元素）
     var meta = $('viewMeta');
     if (meta) {
       meta.innerHTML =
+        '<span class="chip meal">' + escapeHtml(meal.meal || '') + '</span>' +
         (meal.category
           ? '<span class="chip category' + (meal.category === '外食' ? ' out' : '') + '">' + escapeHtml(meal.category) + '</span>'
           : '') +

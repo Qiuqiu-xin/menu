@@ -2,7 +2,7 @@
 photos/
 
 # 测试临时目录
-.edge-test/
+.edge-*/
 .test-in/
 
 # Node
