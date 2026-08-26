@@ -1215,7 +1215,7 @@
       }));
 
       var canvas = await html2canvas(clone, {
-        scale: 2,
+        scale: 4,
         backgroundColor: '#fdfcff',
         useCORS: true,
         logging: false,
