@@ -399,7 +399,7 @@ body {
   font-family: var(--font-display);
   font-size: 18px;
   letter-spacing: 2px;
-  color: var(--seal);
+  color: #584a6b;
   background: linear-gradient(90deg, #e3f1b4, #ccdd88);
   border: 1px solid #aec86a;
   border-radius: 12px;
