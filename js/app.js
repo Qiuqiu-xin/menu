@@ -167,11 +167,12 @@
     var hasUncategorized = state.meals.some(function (m) { return !m.category; });
 
     var hasFilter = state.meal || state.tag || state.category;
-    var html = '<div class="filter-group">';
+    var html = '';
     if (state.serverMode) {
-      html += '<button class="btn btn-primary" id="addBtn">＋ 添加一餐</button>';
+      // 添加按钮独立一行，避免挤开「餐次」标签导致与「分类」不对齐
+      html += '<div class="filter-group"><button class="btn btn-primary" id="addBtn">＋ 添加一餐</button></div>';
     }
-    html += '<span class="filter-label">餐次</span>';
+    html += '<div class="filter-group"><span class="filter-label">餐次</span>';
     html += '<button class="btn' + (state.meal ? '' : ' active') + '" data-meal="">全部</button>';
     MEAL_ORDER.forEach(function (meal) {
       var cnt = mealCount(meal);
