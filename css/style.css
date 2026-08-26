@@ -393,11 +393,16 @@ body {
 }
 
 .cal-day-title {
+  display: inline-block;
   margin: 0 0 14px;
+  padding: 5px 18px;
   font-family: var(--font-display);
   font-size: 18px;
   letter-spacing: 2px;
-  color: var(--seal);
+  color: #5c6b3a;
+  background: linear-gradient(90deg, #e3f1b4, #ccdd88);
+  border: 1px solid #aec86a;
+  border-radius: 12px;
 }
 
 .cal-hint {
