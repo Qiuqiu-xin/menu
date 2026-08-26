@@ -246,7 +246,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 730px;
+  max-width: 656px;
   margin: 0 auto 10px;
 }
 
@@ -298,7 +298,7 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   width: 100%;
-  max-width: 730px;
+  max-width: 656px;
   margin: 0 auto 4px;
 }
 
@@ -315,13 +315,13 @@ body {
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
   width: 100%;
-  max-width: 730px;
+  max-width: 656px;
   margin: 0 auto;
 }
 
 .cal-day {
   position: relative;
-  width: 50%;
+  width: 56%;
   aspect-ratio: 1;
   margin: 0 auto;
   border: 2px solid transparent;
@@ -344,7 +344,7 @@ body {
 
 .cal-day.blank {
   cursor: default;
-  width: 50%;
+  width: 56%;
   aspect-ratio: 1;
   margin: 0 auto;
 }
