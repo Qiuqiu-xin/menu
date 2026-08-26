@@ -315,13 +315,15 @@ body {
 
 .cal-day {
   position: relative;
-  border: 1px solid transparent;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
+  border: 2px solid transparent;
   background: transparent;
   color: var(--ink);
   font-family: inherit;
   font-size: 15px;
-  height: 48px;
-  border-radius: 10px;
+  border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -331,13 +333,17 @@ body {
 
 .cal-day:not(.blank):hover {
   background: var(--seal-soft);
+  color: var(--seal-deep);
 }
 
 .cal-day.blank {
   cursor: default;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
 }
 
-/* 有记录的天：印章紫圆底白字 */
+/* 有记录的天：印章紫实心圆白字 */
 .cal-day.has {
   background: var(--seal);
   color: #fff;
@@ -346,19 +352,24 @@ body {
 
 .cal-day.has:hover {
   background: var(--seal-deep);
+  color: #fff;
 }
 
-/* 今天：紫色描边圈 */
+/* 今天：紫色描边圆 */
 .cal-day.today {
   border-color: var(--seal);
+  color: var(--seal);
+  font-weight: 600;
 }
 
+/* 有记录且今天：紫圆白字 + 白色内圈 */
 .cal-day.has.today {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px var(--seal), 0 2px 5px rgba(108, 96, 138, 0.25);
+  color: #fff;
+  border-color: var(--seal-deep);
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--seal), 0 2px 5px rgba(108, 96, 138, 0.25);
 }
 
-/* 选中的天：更深紫 */
+/* 选中的天：更深紫实心圆 */
 .cal-day.selected,
 .cal-day.has.selected {
   background: var(--seal-deep);
@@ -388,7 +399,7 @@ body {
 }
 
 @media (max-width: 640px) {
-  .cal-day { height: 40px; font-size: 14px; }
+  .cal-day, .cal-day.blank { width: 36px; height: 36px; font-size: 14px; }
   .cal-grid { gap: 4px; }
   .cal-week { gap: 4px; }
   .cal-toolbar { gap: 8px; }
