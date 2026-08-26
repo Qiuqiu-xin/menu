@@ -246,8 +246,8 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 292px;
-  margin: 0 auto 10px;
+  max-width: 730px;
+  margin: 0 auto 12px;
 }
 
 .cal-title {
@@ -295,15 +295,16 @@ body {
 
 .cal-week {
   display: grid;
-  grid-template-columns: repeat(7, 40px);
-  gap: 2px;
-  width: fit-content;
-  margin: 0 auto 4px;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+  max-width: 730px;
+  margin: 0 auto 6px;
 }
 
 .cal-week-day {
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--ink-soft);
   letter-spacing: 1px;
   padding: 2px 0;
@@ -311,22 +312,22 @@ body {
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 40px);
-  gap: 2px;
-  width: fit-content;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  width: 100%;
+  max-width: 730px;
   margin: 0 auto;
 }
 
 .cal-day {
   position: relative;
-  width: 40px;
-  height: 40px;
-  margin: 0 auto;
-  border: 1.5px solid transparent;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid transparent;
   background: transparent;
   color: var(--ink);
   font-family: inherit;
-  font-size: 14px;
+  font-size: 19px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -342,9 +343,8 @@ body {
 
 .cal-day.blank {
   cursor: default;
-  width: 40px;
-  height: 40px;
-  margin: 0 auto;
+  width: 100%;
+  aspect-ratio: 1;
 }
 
 /* 有记录的天：浅紫渐变圆 + 深紫字 */
@@ -407,9 +407,9 @@ body {
 }
 
 @media (max-width: 640px) {
-  .cal-day, .cal-day.blank { width: 34px; height: 34px; font-size: 13px; }
-  .cal-grid { gap: 2px; }
-  .cal-week { gap: 2px; }
+  .cal-day, .cal-day.blank { font-size: 14px; }
+  .cal-grid { gap: 3px; }
+  .cal-week { gap: 3px; }
   .cal-toolbar { gap: 6px; }
 }
 
