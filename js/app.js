@@ -449,7 +449,10 @@
     if (!items.length) {
       return '<p class="cal-hint">' + dateLabel(state.calSelected) + ' 没有记录。</p>';
     }
-    return '<h4 class="cal-day-title">' + dateLabel(state.calSelected) + '</h4>' +
+    return '<div class="cal-day-head">' +
+      '<span class="cal-day-title">' + dateLabel(state.calSelected) + '</span>' +
+      '<span class="cal-day-count">' + items.length + ' 餐</span>' +
+      '</div>' +
       '<div class="grid">' + items.map(cardHtml).join('') + '</div>';
   }
 

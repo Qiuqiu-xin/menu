@@ -392,17 +392,42 @@ body {
   margin-top: 22px;
 }
 
+.cal-day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+
 .cal-day-title {
-  display: inline-block;
-  margin: 0 0 14px;
-  padding: 5px 18px;
+  position: relative;
+  padding-left: 18px;
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 19px;
   letter-spacing: 2px;
-  color: #584a6b;
-  background: linear-gradient(90deg, #e3f1b4, #ccdd88);
-  border: 1px solid #aec86a;
-  border-radius: 12px;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.cal-day-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 2px;
+  background: var(--seal);
+  transform: rotate(45deg);
+  opacity: 0.85;
+}
+
+.cal-day-count {
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }
 
 .cal-hint {
