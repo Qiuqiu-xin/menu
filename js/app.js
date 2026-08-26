@@ -19,6 +19,10 @@
     collapsedMonths: {}, // 折叠的月份：{ 'YYYY-MM': true }
     collapsedYears: {},  // 折叠的年份：{ 'YYYY': true }
     collapsedDays: {},   // 折叠的日期：{ 'YYYY-MM-DD': true }
+    viewMode: 'list',    // 'list' 列表 | 'calendar' 日历
+    calYear: 0,          // 日历当前显示的年
+    calMonth: 0,         // 日历当前显示的月（1-12）
+    calSelected: '',     // 日历中选中的日期 'YYYY-MM-DD'（空 = 未选中）
     zoom: 1,             // 页面缩放
     viewZoom: 1,         // 详情页照片缩放
     viewPhotos: [],      // 详情页当前餐的照片数组
@@ -77,6 +81,17 @@
   function todayStr() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function loadViewMode() {
+    try {
+      var v = localStorage.getItem('ershi-view');
+      if (v === 'calendar' || v === 'list') state.viewMode = v;
+    } catch (e) { /* 忽略 */ }
+  }
+
+  function saveViewMode() {
+    try { localStorage.setItem('ershi-view', state.viewMode); } catch (e) { /* 忽略 */ }
   }
 
   function suggestMealNow() {
@@ -169,8 +184,21 @@
     var hasFilter = state.meal || state.tag || state.category;
     var html = '';
     if (state.serverMode) {
-      // 添加按钮独立一行，避免挤开「餐次」标签导致与「分类」不对齐
-      html += '<div class="filter-group"><button class="btn btn-primary" id="addBtn">＋ 添加一餐</button></div>';
+      // 添加按钮独立一行，右侧放「列表/日历」切换，避免挤开「餐次」标签
+      html += '<div class="filter-group toolbar-row">' +
+        '<button class="btn btn-primary" id="addBtn">＋ 添加一餐</button>' +
+        '<div class="view-switch" role="tablist">' +
+          '<button class="view-tab' + (state.viewMode === 'list' ? ' active' : '') + '" data-view="list" role="tab">列表</button>' +
+          '<button class="view-tab' + (state.viewMode === 'calendar' ? ' active' : '') + '" data-view="calendar" role="tab">日历</button>' +
+        '</div>' +
+      '</div>';
+    } else {
+      html += '<div class="filter-group toolbar-row">' +
+        '<div class="view-switch" role="tablist">' +
+          '<button class="view-tab' + (state.viewMode === 'list' ? ' active' : '') + '" data-view="list" role="tab">列表</button>' +
+          '<button class="view-tab' + (state.viewMode === 'calendar' ? ' active' : '') + '" data-view="calendar" role="tab">日历</button>' +
+        '</div>' +
+      '</div>';
     }
     html += '<div class="filter-group"><span class="filter-label">餐次</span>';
     html += '<button class="btn' + (state.meal ? '' : ' active') + '" data-meal="">全部</button>';
@@ -346,6 +374,85 @@
     }).join('');
   }
 
+  /* ---------- 日历视图 ---------- */
+
+  const CAL_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+  /** 定位日历初始月份：有数据的最新月；无数据显示当前系统月 */
+  function initCalendarMonth() {
+    var latest = null;
+    state.meals.forEach(function (m) {
+      if (!latest || m.date > latest) latest = m.date;
+    });
+    if (latest) {
+      state.calYear = +latest.slice(0, 4);
+      state.calMonth = +latest.slice(5, 7);
+    } else {
+      var d = new Date();
+      state.calYear = d.getFullYear();
+      state.calMonth = d.getMonth() + 1;
+    }
+  }
+
+  function renderCalendar() {
+    var el = $('calendar');
+    if (!el) return;
+    if (!state.calYear || !state.calMonth) initCalendarMonth();
+
+    var y = state.calYear;
+    var mo = state.calMonth;
+    var daysInMonth = new Date(y, mo, 0).getDate();
+    var startWeekday = new Date(y, mo - 1, 1).getDay(); // 0=周日
+
+    // 当前筛选下的有记录日期集合
+    var daySet = {};
+    filteredMeals().forEach(function (m) { daySet[m.date] = true; });
+
+    var today = todayStr();
+    var sel = state.calSelected;
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+
+    var html =
+      '<div class="cal-toolbar">' +
+        '<button class="cal-nav" data-cal="prev" title="上个月" aria-label="上个月">‹</button>' +
+        '<span class="cal-title">' + y + '年' + mo + '月</span>' +
+        '<button class="cal-nav" data-cal="next" title="下个月" aria-label="下个月">›</button>' +
+        '<button class="cal-today" data-cal="today">今天</button>' +
+      '</div>' +
+      '<div class="cal-week">' + CAL_WEEKDAYS.map(function (w) {
+        return '<span class="cal-week-day">' + w + '</span>';
+      }).join('') + '</div>' +
+      '<div class="cal-grid">';
+
+    for (var i = 0; i < startWeekday; i++) html += '<span class="cal-day blank"></span>';
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var date = y + '-' + pad(mo) + '-' + pad(d);
+      var cls = 'cal-day';
+      if (daySet[date]) cls += ' has';
+      if (date === today) cls += ' today';
+      if (date === sel) cls += ' selected';
+      html += '<button type="button" class="' + cls + '" data-date="' + date + '">' + d + '</button>';
+    }
+    html += '</div>';
+
+    html += '<div class="cal-day-cards">' + renderCalendarDay() + '</div>';
+    el.innerHTML = html;
+  }
+
+  /** 日历中选中天的记录卡片（复用卡片样式与交互） */
+  function renderCalendarDay() {
+    if (!state.calSelected) {
+      return '<p class="cal-hint">点击日历上的日期，查看当天吃了什么。</p>';
+    }
+    var items = filteredMeals().filter(function (m) { return m.date === state.calSelected; });
+    if (!items.length) {
+      return '<p class="cal-hint">' + dateLabel(state.calSelected) + ' 没有记录。</p>';
+    }
+    return '<h4 class="cal-day-title">' + dateLabel(state.calSelected) + '</h4>' +
+      '<div class="grid">' + items.map(cardHtml).join('') + '</div>';
+  }
+
   /* ---------- 右侧月份导航（滚动时滑出） ---------- */
 
   function renderSideNav() {
@@ -410,13 +517,19 @@
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(function () {
+        if (state.viewMode === 'calendar') {
+          // 日历模式下不显示侧边月份导航
+          nav.classList.remove('visible');
+          ticking = false;
+          return;
+        }
         // 滚动超过 200px 时滑出，回到顶部附近收起
         nav.classList.toggle('visible', window.scrollY > 200);
         updateSideNavActive();
         ticking = false;
       });
     }, { passive: true });
-    nav.classList.toggle('visible', window.scrollY > 200);
+    nav.classList.toggle('visible', !(state.viewMode === 'calendar') && window.scrollY > 200);
     updateSideNavActive();
   }
 
@@ -722,7 +835,23 @@
     renderStats();
     renderFilters();
     renderSideNav();
-    renderTimeline();
+    if (state.viewMode === 'calendar') {
+      renderCalendar();
+    } else {
+      renderTimeline();
+    }
+    // 列表 / 日历 互斥显示
+    var cal = $('calendar');
+    var tl = $('timeline');
+    var empty = $('empty');
+    if (cal) cal.hidden = state.viewMode !== 'calendar';
+    if (tl) tl.hidden = state.viewMode === 'calendar';
+    if (empty) empty.hidden = state.viewMode === 'calendar' ? true : empty.hidden;
+    // 日历模式下收起侧边月份导航
+    if (state.viewMode === 'calendar') {
+      var nav = $('sideNav');
+      if (nav) nav.classList.remove('visible');
+    }
   }
 
   /* ---------- 站点标题 / 副标题（双击修改） ---------- */
@@ -1109,6 +1238,18 @@
       if (!btn) return;
       // 「添加一餐」按钮由 filter 栏动态渲染，委托到容器上
       if (btn.id === 'addBtn') { openDialog('add', null); return; }
+      if (btn.dataset.view !== undefined) {
+        // 列表 / 日历 视图切换
+        state.viewMode = btn.dataset.view;
+        saveViewMode();
+        if (state.viewMode === 'calendar') {
+          // 首次进入日历且尚未定位月份时定位
+          if (!state.calYear || !state.calMonth) initCalendarMonth();
+          state.calSelected = '';
+        }
+        render();
+        return;
+      }
       if (btn.dataset.clear) { state.meal = null; state.tag = null; state.category = null; }
       else if (btn.dataset.meal !== undefined) { state.meal = btn.dataset.meal || null; }
       else if (btn.dataset.category !== undefined) { state.category = btn.dataset.category || null; }
@@ -1117,6 +1258,69 @@
       }
       render();
     });
+
+    var calendarEl = $('calendar');
+    if (calendarEl) {
+      calendarEl.addEventListener('click', function (e) {
+        // 编辑 / 删除（当天卡片）
+        var act = e.target.closest('[data-action]');
+        if (act) {
+          e.stopPropagation();
+          var id = act.dataset.id;
+          if (act.dataset.action === 'edit') openDialog('edit', findMeal(id));
+          else if (act.dataset.action === 'delete') doDelete(id);
+          return;
+        }
+        // 翻月 / 今天
+        var nav = e.target.closest('[data-cal]');
+        if (nav) {
+          e.stopPropagation();
+          var dir = nav.dataset.cal;
+          if (dir === 'prev') {
+            state.calMonth--;
+            if (state.calMonth < 1) { state.calMonth = 12; state.calYear--; }
+          } else if (dir === 'next') {
+            state.calMonth++;
+            if (state.calMonth > 12) { state.calMonth = 1; state.calYear++; }
+          } else {
+            var d = new Date();
+            state.calYear = d.getFullYear();
+            state.calMonth = d.getMonth() + 1;
+          }
+          state.calSelected = '';
+          renderCalendar();
+          return;
+        }
+        // 选中某天
+        var day = e.target.closest('.cal-day');
+        if (day && !day.classList.contains('blank')) {
+          e.stopPropagation();
+          state.calSelected = day.dataset.date;
+          renderCalendar();
+          return;
+        }
+        // 点击照片 → 放大查看详情
+        var photoArea = e.target.closest('.card-photo-wrap');
+        if (photoArea) {
+          e.stopPropagation();
+          var pcard = photoArea.closest('.card');
+          if (pcard) openView(findMeal(pcard.dataset.id));
+          return;
+        }
+        // 标签筛选
+        var tag = e.target.closest('.chip.tag');
+        if (tag) {
+          var t = tag.dataset.tag;
+          state.tag = state.tag === t ? null : t;
+          render();
+          return;
+        }
+        // 卡片展开（备注）
+        var card = e.target.closest('.card');
+        if (!card || card.classList.contains('no-notes')) return;
+        card.classList.toggle('expanded');
+      });
+    }
 
     var timelineEl = $('timeline');
     if (timelineEl) {
@@ -1223,6 +1427,8 @@
     bindZoom();
     bindViewZoom();
     bindColorPickers();
+    loadViewMode();
+    initCalendarMonth();
     state.zoom = loadZoom();
     applyZoom();
     loadColors();
