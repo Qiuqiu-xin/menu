@@ -239,31 +239,31 @@ body {
 /* ---------- 日历视图 ---------- */
 
 .calendar {
-  margin: 26px 0 10px;
+  margin: 20px 0 8px;
 }
 
 .cal-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .cal-title {
   font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: 3px;
+  font-size: 18px;
+  letter-spacing: 2px;
   color: var(--ink);
 }
 
 .cal-nav {
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--seal);
-  border-radius: 8px;
-  font-size: 16px;
+  border-radius: 7px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -280,8 +280,8 @@ body {
   background: var(--card);
   color: var(--ink-soft);
   border-radius: 999px;
-  padding: 4px 14px;
-  font-size: 12.5px;
+  padding: 3px 12px;
+  font-size: 12px;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -295,34 +295,34 @@ body {
 .cal-week {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 3px;
+  margin-bottom: 4px;
 }
 
 .cal-week-day {
   text-align: center;
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--ink-soft);
   letter-spacing: 1px;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 3px;
 }
 
 .cal-day {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   margin: 0 auto;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
   background: transparent;
   color: var(--ink);
   font-family: inherit;
-  font-size: 15px;
+  font-size: 14px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
@@ -338,21 +338,21 @@ body {
 
 .cal-day.blank {
   cursor: default;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   margin: 0 auto;
 }
 
-/* 有记录的天：印章紫实心圆白字 */
+/* 有记录的天：浅紫渐变圆 + 深紫字 */
 .cal-day.has {
-  background: var(--seal);
-  color: #fff;
-  box-shadow: 0 2px 5px rgba(108, 96, 138, 0.25);
+  background: linear-gradient(135deg, #d9cde7, #c9b8da);
+  color: #6a5378;
+  font-weight: 600;
 }
 
 .cal-day.has:hover {
-  background: var(--seal-deep);
-  color: #fff;
+  background: linear-gradient(135deg, #cbbde0, #b8a6d0);
+  color: #5a4670;
 }
 
 /* 今天：紫色描边圆 */
@@ -362,19 +362,23 @@ body {
   font-weight: 600;
 }
 
-/* 有记录且今天：紫圆白字 + 白色内圈 */
+/* 有记录且今天：浅紫圆 + 紫描边 */
 .cal-day.has.today {
-  color: #fff;
-  border-color: var(--seal-deep);
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--seal), 0 2px 5px rgba(108, 96, 138, 0.25);
+  border-color: var(--seal);
+  color: #6a5378;
 }
 
-/* 选中的天：更深紫实心圆 */
+/* 选中的天：实心紫圆白字 */
 .cal-day.selected,
 .cal-day.has.selected {
-  background: var(--seal-deep);
+  background: var(--seal);
   color: #fff;
-  border-color: var(--seal-deep);
+  border-color: var(--seal);
+}
+
+.cal-day.selected:hover {
+  background: var(--seal);
+  color: #fff;
 }
 
 /* 选中天下方的当天记录 */
@@ -399,10 +403,10 @@ body {
 }
 
 @media (max-width: 640px) {
-  .cal-day, .cal-day.blank { width: 36px; height: 36px; font-size: 14px; }
-  .cal-grid { gap: 4px; }
-  .cal-week { gap: 4px; }
-  .cal-toolbar { gap: 8px; }
+  .cal-day, .cal-day.blank { width: 32px; height: 32px; font-size: 13px; }
+  .cal-grid { gap: 2px; }
+  .cal-week { gap: 2px; }
+  .cal-toolbar { gap: 6px; }
 }
 
 /* ---------- 右键自定义颜色面板 ---------- */
