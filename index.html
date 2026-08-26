@@ -46,17 +46,17 @@
       <h2 class="dialog-title" id="dialogTitle">添加一餐</h2>
 
       <div class="field">
-        <label class="field-label">照片 *</label>
+        <label class="field-label">照片 *（可多张）</label>
         <div class="photo-row">
-          <img id="photoPreview" class="photo-preview" alt="照片预览" hidden />
           <div class="photo-inputs">
             <label class="btn file-btn" id="fileBtn">
-              <span id="fileBtnText">选择照片文件上传</span>
-              <input type="file" id="photoFile" accept=".jpg,.jpeg,.png,.webp,.gif" hidden />
+              <span id="fileBtnText">选择照片文件上传（可多选）</span>
+              <input type="file" id="photoFile" accept=".jpg,.jpeg,.png,.webp,.gif" multiple hidden />
             </label>
-            <p class="field-hint">上传的照片会保存到 photos/ 文件夹。</p>
+            <p class="field-hint">可一次选多张，照片会保存到 photos/ 文件夹；第一张作为卡片封面。</p>
           </div>
         </div>
+        <div class="photo-previews" id="photoPreviews"></div>
       </div>
 
       <div class="field">
@@ -77,6 +77,14 @@
             <option>午餐</option>
             <option>晚餐</option>
             <option>加餐</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label" for="categoryInput">分类</label>
+          <select id="categoryInput" class="text-input">
+            <option value="">未分类</option>
+            <option>自制</option>
+            <option>外食</option>
           </select>
         </div>
       </div>
@@ -116,11 +124,11 @@
         <span class="zoom-value" id="viewZoomValue">100%</span>
         <button class="zoom-btn" id="viewZoomIn" title="放大照片">＋</button>
       </div>
+      <div class="view-thumbs" id="viewThumbs"></div>
       <div class="view-body">
         <h3 class="view-title" id="viewTitle"></h3>
-        <div class="view-meta">
+        <div class="view-meta" id="viewMeta">
           <span class="chip meal" id="viewMeal"></span>
-          <span class="view-tags" id="viewTags"></span>
         </div>
         <p class="view-notes" id="viewNotes"></p>
       </div>

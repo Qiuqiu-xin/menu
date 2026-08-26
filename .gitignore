@@ -1,5 +1,9 @@
 # 照片数据（体积大，不入库）
 photos/
 
+# 测试临时目录
+.edge-test/
+.test-in/
+
 # Node
 node_modules/

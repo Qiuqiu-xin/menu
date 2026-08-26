@@ -14,9 +14,11 @@ export const SITE_FILE = join(ROOT, 'data', 'site.js');
 
 export const PHOTO_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 export const MEALS = ['早餐', '午餐', '晚餐', '加餐'];
+export const CATEGORIES = ['自制', '外食'];
 
 export const DATA_HEADER = `// 二人食记数据文件 — 由本地服务（server.js）或 scripts/add.js 自动维护，也可手动编辑
-// 字段：id(唯一) / date(YYYY-MM-DD) / title(标题) / photo(照片路径) / meal(餐次: 早餐|午餐|晚餐|加餐) / tags(标签数组) / notes(备注)
+// 字段：id(唯一) / date(YYYY-MM-DD) / title(标题) / photos(照片路径数组) / photo(首图，兼容旧数据)
+//      / meal(餐次: 早餐|午餐|晚餐|加餐) / category(分类: 自制|外食，可空) / tags(标签数组) / notes(备注)
 `;
 
 /* ---------- 日期 ---------- */
@@ -126,7 +128,11 @@ export function parseTags(raw) {
 
 /** 列出 photos/ 里所有图片文件（未登记的新照片） */
 export function listNewPhotos(meals) {
-  const used = new Set((meals || []).map((m) => String(m.photo || '').replace(/\\/g, '/')));
+  const used = new Set();
+  (meals || []).forEach((m) => {
+    const arr = Array.isArray(m.photos) && m.photos.length ? m.photos : (m.photo ? [m.photo] : []);
+    arr.forEach((p) => used.add(String(p || '').replace(/\\/g, '/')));
+  });
   const items = [];
   for (const f of readdirSync(PHOTO_DIR)) {
     if (!PHOTO_EXTS.includes(extname(f).toLowerCase())) continue;

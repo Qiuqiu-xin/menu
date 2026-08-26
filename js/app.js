@@ -7,27 +7,38 @@
   'use strict';
 
   var MEAL_ORDER = ['早餐', '午餐', '晚餐', '加餐'];
+  var CATEGORY_ORDER = ['自制', '外食'];
 
   var state = {
     meals: [],
     serverMode: false,
     meal: null,          // 当前餐次筛选
     tag: null,           // 当前标签筛选
+    category: null,      // 当前分类筛选（'自制' | '外食' | '未分类'）
     site: { title: '', subtitle: '', footer: '' },
     collapsedMonths: {}, // 折叠的月份：{ 'YYYY-MM': true }
     collapsedYears: {},  // 折叠的年份：{ 'YYYY': true }
     collapsedDays: {},   // 折叠的日期：{ 'YYYY-MM-DD': true }
     zoom: 1,             // 页面缩放
     viewZoom: 1,         // 详情页照片缩放
+    viewPhotos: [],      // 详情页当前餐的照片数组
+    viewIndex: 0,        // 详情页当前显示第几张
     customBg: '',        // 自定义外层背景色（紫色区域）
     customSheet: '',     // 自定义内页颜色（米色纸面）
     titleFont: '',       // 自定义标题字体（空 = 默认）
     bodyFont: '',        // 自定义正文字体（空 = 默认）
     inkColor: '',        // 自定义字体颜色（空 = 默认）
-    dialog: { mode: 'add', id: null, photo: null }
+    dialog: { mode: 'add', id: null, photos: [] }
   };
 
   function $(id) { return document.getElementById(id); }
+
+  /** 归一读取照片数组：新数据 photos / 旧数据 photo / 都没有 → 空 */
+  function mealPhotos(m) {
+    if (!m) return [];
+    if (Array.isArray(m.photos) && m.photos.length) return m.photos;
+    return m.photo ? [m.photo] : [];
+  }
 
   function escapeHtml(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -139,6 +150,11 @@
 
   function tagCount(tag) { return state.meals.filter(function (m) { return (m.tags || []).indexOf(tag) !== -1; }).length; }
 
+  /** 分类计数：无分类的记录计入 '未分类' */
+  function categoryCount(cat) {
+    return state.meals.filter(function (m) { return (m.category || '未分类') === cat; }).length;
+  }
+
   function renderFilters() {
     var el = $('filters');
     if (!el) return;
@@ -147,7 +163,10 @@
     state.meals.forEach(function (m) { (m.tags || []).forEach(function (t) { tagSet[t] = true; }); });
     var tags = Object.keys(tagSet).sort();
 
-    var hasFilter = state.meal || state.tag;
+    var hasCategory = state.meals.some(function (m) { return !!m.category; });
+    var hasUncategorized = state.meals.some(function (m) { return !m.category; });
+
+    var hasFilter = state.meal || state.tag || state.category;
     var html = '<div class="filter-group">';
     if (state.serverMode) {
       html += '<button class="btn btn-primary" id="addBtn">＋ 添加一餐</button>';
@@ -160,6 +179,20 @@
         '">' + meal + '<span class="cnt">' + cnt + '</span></button>';
     });
     html += '</div>';
+
+    if (hasCategory || hasUncategorized) {
+      html += '<div class="filter-group"><span class="filter-label">分类</span>';
+      html += '<button class="btn' + (state.category ? '' : ' active') + '" data-category="">全部</button>';
+      CATEGORY_ORDER.forEach(function (cat) {
+        html += '<button class="btn' + (state.category === cat ? ' active' : '') + '" data-category="' + cat +
+          '">' + cat + '<span class="cnt">' + categoryCount(cat) + '</span></button>';
+      });
+      if (hasUncategorized) {
+        html += '<button class="btn' + (state.category === '未分类' ? ' active' : '') + '" data-category="未分类">未分类' +
+          '<span class="cnt">' + categoryCount('未分类') + '</span></button>';
+      }
+      html += '</div>';
+    }
 
     if (tags.length) {
       html += '<div class="filter-group"><span class="filter-label">标签</span>';
@@ -180,6 +213,7 @@
     return state.meals.filter(function (m) {
       if (state.meal && m.meal !== state.meal) return false;
       if (state.tag && (m.tags || []).indexOf(state.tag) === -1) return false;
+      if (state.category && (m.category || '未分类') !== state.category) return false;
       return true;
     });
   }
@@ -188,11 +222,20 @@
 
   function cardHtml(m) {
     var id = escapeHtml(m.id);
+    var photos = mealPhotos(m);
     var tags = (m.tags || []).map(function (t) {
       return '<span class="chip tag" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + '</span>';
     }).join('');
 
     var notes = m.notes ? '<div class="card-notes"><p>' + escapeHtml(m.notes) + '</p></div>' : '';
+
+    var category = m.category
+      ? '<span class="chip category' + (m.category === '外食' ? ' out' : '') + '">' + escapeHtml(m.category) + '</span>'
+      : '';
+
+    var countBadge = photos.length > 1
+      ? '<span class="photo-count">+' + (photos.length - 1) + '</span>'
+      : '';
 
     var actions = '';
     if (state.serverMode) {
@@ -206,13 +249,15 @@
     return (
       '<article class="card' + (m.notes ? '' : ' no-notes') + '" data-id="' + id + '" tabindex="0">' +
         '<div class="card-photo-wrap">' +
-          '<img class="card-photo" src="' + escapeHtml(m.photo) + '" alt="' + escapeHtml(m.title) + '" loading="lazy" />' +
+          '<img class="card-photo" src="' + escapeHtml(photos[0]) + '" alt="' + escapeHtml(m.title) + '" loading="lazy" />' +
+          countBadge +
           '<span class="stamp">' + fmtDate(m.date) + '</span>' +
         '</div>' +
         '<div class="card-body">' +
           '<h3 class="card-title">' + escapeHtml(m.title) + '</h3>' +
           '<div class="card-meta">' +
             '<span class="chip meal">' + escapeHtml(m.meal) + '</span>' +
+            category +
             tags +
           '</div>' +
           notes +
@@ -784,16 +829,20 @@
     return state.meals.find(function (m) { return m.id === id; }) || null;
   }
 
-  function setPhoto(path) {
-    state.dialog.photo = path;
-    var preview = $('photoPreview');
-    if (path) {
-      preview.src = path;
-      preview.hidden = false;
-    } else {
-      preview.hidden = true;
-      preview.removeAttribute('src');
-    }
+  /** 渲染弹窗里的照片预览网格（每个缩略图带移除按钮） */
+  function renderPhotoPreviews() {
+    var box = $('photoPreviews');
+    if (!box) return;
+    var photos = state.dialog.photos || [];
+    box.innerHTML = photos.map(function (p, i) {
+      return (
+        '<div class="preview-item">' +
+          '<img class="preview-thumb" src="' + escapeHtml(p) + '" alt="照片 ' + (i + 1) + '" />' +
+          '<button type="button" class="preview-remove" data-remove="' + i + '" title="移除这张照片">✕</button>' +
+        '</div>'
+      );
+    }).join('');
+    box.hidden = photos.length === 0;
   }
 
   function showFormError(msg) {
@@ -808,17 +857,22 @@
 
   function openDialog(mode, meal) {
     hideFormError();
-    state.dialog = { mode: mode, id: meal ? meal.id : null, photo: meal ? meal.photo : null };
+    state.dialog = {
+      mode: mode,
+      id: meal ? meal.id : null,
+      photos: meal ? mealPhotos(meal).slice() : []
+    };
 
     $('dialogTitle').textContent = mode === 'edit' ? '编辑这一餐' : '添加一餐';
     $('titleInput').value = meal ? (meal.title || '') : '';
     $('dateInput').value = meal ? (meal.date || '') : todayStr();
     $('mealInput').value = meal ? (meal.meal || '') : suggestMealNow();
+    $('categoryInput').value = meal ? (meal.category || '') : '自制';
     $('tagsInput').value = meal && meal.tags ? meal.tags.join(', ') : '';
     $('notesInput').value = meal ? (meal.notes || '') : '';
     $('photoFile').value = '';
 
-    setPhoto(meal ? meal.photo : null);
+    renderPhotoPreviews();
 
     $('mealDialog').showModal();
   }
@@ -836,21 +890,55 @@
 
   function openView(meal) {
     if (!meal) return;
+    var photos = mealPhotos(meal);
+    state.viewPhotos = photos;
+    state.viewIndex = 0;
+
     var photo = $('viewPhoto');
-    photo.src = meal.photo;
+    photo.src = photos[0];
     photo.alt = meal.title || '';
     $('viewTitle').textContent = meal.title || '';
     $('viewMeal').textContent = meal.meal || '';
     $('viewDate').textContent = fmtFullDate(meal.date);
-    $('viewTags').innerHTML = (meal.tags || []).map(function (t) {
-      return '<span class="chip tag">' + escapeHtml(t) + '</span>';
-    }).join('');
+    var meta = $('viewMeta');
+    if (meta) {
+      meta.innerHTML =
+        (meal.category
+          ? '<span class="chip category' + (meal.category === '外食' ? ' out' : '') + '">' + escapeHtml(meal.category) + '</span>'
+          : '') +
+        (meal.tags || []).map(function (t) {
+          return '<span class="chip tag">' + escapeHtml(t) + '</span>';
+        }).join('');
+    }
     var notes = $('viewNotes');
     notes.textContent = meal.notes || '';
     notes.hidden = !meal.notes;
     state.viewZoom = 1; // 每次打开重置照片缩放
     applyViewZoom();
+    renderViewThumbs();
     $('viewDialog').showModal();
+  }
+
+  function renderViewThumbs() {
+    var box = $('viewThumbs');
+    if (!box) return;
+    var photos = state.viewPhotos || [];
+    if (photos.length <= 1) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.innerHTML = photos.map(function (p, i) {
+      return '<button type="button" class="view-thumb' + (i === state.viewIndex ? ' active' : '') +
+        '" data-index="' + i + '" title="照片 ' + (i + 1) + '">' +
+        '<img src="' + escapeHtml(p) + '" alt="照片 ' + (i + 1) + '" /></button>';
+    }).join('');
+  }
+
+  function switchViewPhoto(i) {
+    var photos = state.viewPhotos || [];
+    if (i < 0 || i >= photos.length || i === state.viewIndex) return;
+    state.viewIndex = i;
+    var photo = $('viewPhoto');
+    if (photo) photo.src = photos[i];
+    renderViewThumbs();
   }
 
   /* ---------- 照片缩放 ---------- */
@@ -877,8 +965,8 @@
 
   async function handleUpload(file) {
     if (!/\.(jpe?g|png|webp|gif)$/i.test(file.name)) {
-      showFormError('仅支持 jpg / jpeg / png / webp / gif 图片');
-      return;
+      showFormError('仅支持 jpg / jpeg / png / webp / gif 图片：' + file.name);
+      return false;
     }
     var fd = new FormData();
     fd.append('file', file);
@@ -890,13 +978,16 @@
     try {
       var r = await fetch('/api/upload', { method: 'POST', body: fd });
       var j = await r.json();
-      if (!j.ok) { showFormError('上传失败：' + j.error); return; }
-      setPhoto(j.photo);
+      if (!j.ok) { showFormError('上传失败：' + j.error); return false; }
+      state.dialog.photos.push(j.photo);
+      renderPhotoPreviews();
       // 新上传的照片自动预填日期与餐次（仅添加模式且用户还没改过）
       if (state.dialog.mode === 'add' && !$('dateInput').value && j.date) $('dateInput').value = j.date;
       if (state.dialog.mode === 'add' && j.meal) $('mealInput').value = j.meal;
+      return true;
     } catch (e) {
       showFormError('上传失败，请重试。');
+      return false;
     } finally {
       if (btnText) btnText.textContent = oldText;
       if (btn) btn.classList.remove('disabled');
@@ -908,14 +999,18 @@
     var title = $('titleInput').value.trim();
     var date = $('dateInput').value.trim();
     var meal = $('mealInput').value;
+    var category = $('categoryInput').value;
     var tags = parseTags($('tagsInput').value);
     var notes = $('notesInput').value.trim();
 
     if (!title) return showFormError('标题不能为空。');
     if (!date) return showFormError('请选择日期。');
-    if (!state.dialog.photo) return showFormError('请先选择或上传一张照片。');
+    if (!state.dialog.photos.length) return showFormError('请先选择或上传至少一张照片。');
 
-    var payload = { title: title, date: date, meal: meal, tags: tags, notes: notes, photo: state.dialog.photo };
+    var payload = {
+      title: title, date: date, meal: meal, category: category,
+      tags: tags, notes: notes, photos: state.dialog.photos
+    };
 
     try {
       var r, j;
@@ -972,9 +1067,38 @@
     if (form) form.addEventListener('submit', function (e) { e.preventDefault(); submitForm(); });
 
     var photoFile = $('photoFile');
-    if (photoFile) photoFile.addEventListener('change', function () {
-      var f = photoFile.files && photoFile.files[0];
-      if (f) handleUpload(f);
+    if (photoFile) photoFile.addEventListener('change', async function () {
+      var files = Array.prototype.slice.call(photoFile.files || []);
+      if (!files.length) return;
+      var max = 9;
+      var room = max - state.dialog.photos.length;
+      if (files.length > room) {
+        showFormError('每餐最多 ' + max + ' 张照片（当前已有 ' + state.dialog.photos.length +
+          ' 张，本次最多再传 ' + room + ' 张）。');
+        files = files.slice(0, Math.max(room, 0));
+      }
+      for (var i = 0; i < files.length; i++) {
+        await handleUpload(files[i]);
+      }
+      photoFile.value = '';
+    });
+
+    var previews = $('photoPreviews');
+    if (previews) previews.addEventListener('click', function (e) {
+      var rm = e.target.closest('.preview-remove');
+      if (!rm) return;
+      var i = parseInt(rm.dataset.remove, 10);
+      if (!Number.isInteger(i)) return;
+      state.dialog.photos.splice(i, 1);
+      renderPhotoPreviews();
+      hideFormError();
+    });
+
+    var viewThumbs = $('viewThumbs');
+    if (viewThumbs) viewThumbs.addEventListener('click', function (e) {
+      var t = e.target.closest('.view-thumb');
+      if (!t) return;
+      switchViewPhoto(parseInt(t.dataset.index, 10));
     });
 
     var filtersEl = $('filters');
@@ -983,8 +1107,9 @@
       if (!btn) return;
       // 「添加一餐」按钮由 filter 栏动态渲染，委托到容器上
       if (btn.id === 'addBtn') { openDialog('add', null); return; }
-      if (btn.dataset.clear) { state.meal = null; state.tag = null; }
+      if (btn.dataset.clear) { state.meal = null; state.tag = null; state.category = null; }
       else if (btn.dataset.meal !== undefined) { state.meal = btn.dataset.meal || null; }
+      else if (btn.dataset.category !== undefined) { state.category = btn.dataset.category || null; }
       else if (btn.dataset.tag !== undefined) {
         state.tag = state.tag === btn.dataset.tag ? null : btn.dataset.tag;
       }

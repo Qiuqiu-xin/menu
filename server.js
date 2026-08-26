@@ -9,10 +9,10 @@
    - 网页增删改 API
        GET    /api/data         读取全部记录
        GET    /api/photos       列出 photos/ 里的图片（含是否已被使用）
-       POST   /api/meals        新增一餐
+       POST   /api/meals        新增一餐（photos: 照片路径数组 / photo: 兼容旧字段）
        PUT    /api/meals/:id    编辑一餐
        DELETE /api/meals/:id    删除一餐
-       POST   /api/upload       上传照片（multipart/form-data, 字段名 file）
+       POST   /api/upload       上传单张照片（multipart/form-data, 字段名 file）
    ============================================================ */
 
 import http from 'node:http';
@@ -20,7 +20,7 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSy
 import { join, extname, normalize, basename } from 'node:path';
 import { spawn } from 'node:child_process';
 import {
-  ROOT, PHOTO_DIR, PHOTO_EXTS, MEALS,
+  ROOT, PHOTO_DIR, PHOTO_EXTS, MEALS, CATEGORIES,
   isValidDate, parseDateFromName, suggestMeal,
   loadMeals, saveMeals, makeId, parseTags, isSafePhotoPath,
   loadSite, saveSite,
@@ -153,6 +153,7 @@ function validateMealPayload(body, { requirePhoto }) {
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   const date = typeof body.date === 'string' ? body.date.trim() : '';
   const meal = typeof body.meal === 'string' ? body.meal.trim() : '';
+  const category = typeof body.category === 'string' ? body.category.trim() : '';
   const notes = typeof body.notes === 'string' ? String(body.notes).trim() : '';
   const tags = Array.isArray(body.tags) ? body.tags : [];
 
@@ -160,6 +161,7 @@ function validateMealPayload(body, { requirePhoto }) {
   const dm = date.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (!dm || !isValidDate(+dm[1], +dm[2], +dm[3])) return { error: '日期格式不正确' };
   if (!MEALS.includes(meal)) return { error: '餐次只能是：早餐/午餐/晚餐/加餐' };
+  if (category && !CATEGORIES.includes(category)) return { error: '分类只能是：自制/外食' };
   if (notes.length > 2000) return { error: '备注太长（最多 2000 字）' };
 
   const cleanTags = [...new Set(tags.filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim()))]
@@ -171,10 +173,36 @@ function validateMealPayload(body, { requirePhoto }) {
       date: `${dm[1]}-${String(+dm[2]).padStart(2, '0')}-${String(+dm[3]).padStart(2, '0')}`,
       title,
       meal,
+      category,
       tags: cleanTags,
       notes,
     },
   };
+}
+
+const MAX_PHOTOS = 9;
+
+/** 解析照片数组：优先 body.photos，兼容旧字段 body.photo；update 时缺省保留原值 */
+function resolvePhotos(body, existing) {
+  if (Array.isArray(body.photos)) {
+    const arr = body.photos.filter((p) => typeof p === 'string');
+    if (arr.length === 0) return { error: '请至少选择或上传一张照片' };
+    if (arr.length > MAX_PHOTOS) return { error: `照片最多 ${MAX_PHOTOS} 张` };
+    for (const p of arr) {
+      if (!photoExists(p)) return { error: '照片路径无效：' + p };
+    }
+    return { photos: arr };
+  }
+  if (typeof body.photo === 'string' && body.photo) {
+    if (!photoExists(body.photo)) return { error: '照片路径无效' };
+    return { photos: [body.photo] };
+  }
+  if (existing) {
+    const cur = Array.isArray(existing.photos) && existing.photos.length ? existing.photos
+      : (existing.photo ? [existing.photo] : []);
+    return { photos: cur };
+  }
+  return { error: '请至少选择或上传一张照片' };
 }
 
 function handleList(res) {
@@ -184,7 +212,11 @@ function handleList(res) {
 
 function handlePhotos(res) {
   const meals = loadMeals();
-  const used = new Set(meals.map((m) => String(m.photo || '').replace(/\\/g, '/')));
+  const used = new Set();
+  meals.forEach((m) => {
+    const arr = Array.isArray(m.photos) && m.photos.length ? m.photos : (m.photo ? [m.photo] : []);
+    arr.forEach((p) => used.add(String(p || '').replace(/\\/g, '/')));
+  });
   const photos = [];
   if (existsSync(PHOTO_DIR)) {
     for (const f of readdirSync(PHOTO_DIR)) {
@@ -208,11 +240,11 @@ async function handleCreate(req, res) {
   const { value, error } = validateMealPayload(body, { requirePhoto: true });
   if (error) return fail(res, 400, error);
 
-  const photo = typeof body.photo === 'string' ? body.photo : '';
-  if (!photoExists(photo)) return fail(res, 400, '请先选择或上传一张照片');
+  const { photos, error: photoErr } = resolvePhotos(body, null);
+  if (photoErr) return fail(res, 400, photoErr);
 
   const meals = loadMeals();
-  const meal = { id: makeId(value.date, value.meal, meals), photo, ...value };
+  const meal = { id: makeId(value.date, value.meal, meals), photos, photo: photos[0], ...value };
   meals.push(meal);
   saveMeals(meals);
   ok(res, { meal });
@@ -227,13 +259,10 @@ async function handleUpdate(req, res, id) {
   const idx = meals.findIndex((m) => m.id === id);
   if (idx === -1) return fail(res, 404, '没找到这条记录');
 
-  let photo = meals[idx].photo;
-  if (typeof body.photo === 'string' && body.photo) {
-    if (!photoExists(body.photo)) return fail(res, 400, '照片路径无效');
-    photo = body.photo;
-  }
+  const { photos, error: photoErr } = resolvePhotos(body, meals[idx]);
+  if (photoErr) return fail(res, 400, photoErr);
 
-  const meal = { ...meals[idx], ...value, id, photo };
+  const meal = { ...meals[idx], ...value, id, photos, photo: photos[0] };
   meals[idx] = meal;
   saveMeals(meals);
   ok(res, { meal });

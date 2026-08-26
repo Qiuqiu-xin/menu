@@ -10,7 +10,8 @@
    3. 日期默认取文件名里的日期（2025-03-15 或 IMG_20250315_xxxx），
       没有则取文件的修改时间，可手动修改
    4. 餐次按拍摄时间自动建议，可手动修改
-   5. 输入标题 / 标签 / 备注，写入 data/data.js
+   5. 分类（自制/外食，可留空）
+   6. 输入标题 / 标签 / 备注，写入 data/data.js
    ============================================================ */
 
 import { createInterface } from 'node:readline';
@@ -19,7 +20,7 @@ import { statSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  ROOT, PHOTO_DIR, PHOTO_EXTS, MEALS,
+  ROOT, PHOTO_DIR, PHOTO_EXTS, MEALS, CATEGORIES,
   isValidDate, fmtDate, parseDateFromName, suggestMeal,
   loadMeals, saveMeals, makeId, listNewPhotos,
 } from './lib.js';
@@ -123,6 +124,14 @@ async function main() {
       continue;
     }
 
+    // ---- 分类（自制 / 外食）----
+    const categoryAns = (await question('分类 [自制]（回车确认，或输入：自制/外食，留空也可）：')).trim();
+    let category = categoryAns || '';
+    if (category && !CATEGORIES.includes(category)) {
+      console.log('分类无效（只能填：自制/外食），已留空。');
+      category = '';
+    }
+
     // ---- 标签 / 备注 ----
     const tagsRaw = (await question('标签（逗号分隔，可留空，如：家常菜, 快手菜）：')).trim();
     const tags = tagsRaw ? [...new Set(tagsRaw.split(/[,，、\s]+/).filter(Boolean))] : [];
@@ -130,9 +139,9 @@ async function main() {
 
     // ---- 保存 ----
     const id = makeId(date, meal, meals);
-    meals.push({ id, date, title, photo, meal, tags, notes });
+    meals.push({ id, date, title, photos: [photo], photo, meal, category, tags, notes });
     saveMeals(meals);
-    console.log(`\n✅ 已保存：${title}（${date} · ${meal}）`);
+    console.log(`\n✅ 已保存：${title}（${date} · ${meal}${category ? ' · ' + category : ''}）`);
     pending.splice(idx, 1);
   }
 
