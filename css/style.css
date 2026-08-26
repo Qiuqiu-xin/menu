@@ -246,7 +246,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: 264px;
+  max-width: 292px;
   margin: 0 auto 10px;
 }
 
@@ -295,9 +295,9 @@ body {
 
 .cal-week {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, 40px);
   gap: 2px;
-  max-width: 264px;
+  width: fit-content;
   margin: 0 auto 4px;
 }
 
@@ -311,16 +311,16 @@ body {
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, 40px);
   gap: 2px;
-  max-width: 264px;
+  width: fit-content;
   margin: 0 auto;
 }
 
 .cal-day {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto;
   border: 1.5px solid transparent;
   background: transparent;
@@ -342,8 +342,8 @@ body {
 
 .cal-day.blank {
   cursor: default;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   margin: 0 auto;
 }
 
@@ -407,7 +407,7 @@ body {
 }
 
 @media (max-width: 640px) {
-  .cal-day, .cal-day.blank { width: 32px; height: 32px; font-size: 13px; }
+  .cal-day, .cal-day.blank { width: 34px; height: 34px; font-size: 13px; }
   .cal-grid { gap: 2px; }
   .cal-week { gap: 2px; }
   .cal-toolbar { gap: 6px; }
