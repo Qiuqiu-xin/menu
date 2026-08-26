@@ -1186,10 +1186,6 @@
 
   /** 把一张卡片保存为 PNG 图片 */
   async function saveCardAsImage(id) {
-    if (typeof html2canvas === 'undefined') {
-      window.alert('图片组件未加载，请刷新重试。');
-      return;
-    }
     var meal = findMeal(id);
     var src = document.querySelector('.card[data-id="' + CSS.escape(id) + '"]');
     if (!src) return;
@@ -1214,14 +1210,26 @@
         return new Promise(function (resolve) { img.onload = resolve; img.onerror = resolve; });
       }));
 
-      var canvas = await html2canvas(clone, {
-        scale: 4,
-        backgroundColor: '#fdfcff',
-        useCORS: true,
-        logging: false,
-      });
+      var dataUrl;
+      if (typeof htmlToImage !== 'undefined' && htmlToImage.toPng) {
+        // 优先用 html-to-image：基于 SVG foreignObject 原生渲染，正确支持 object-fit:cover，
+        // 避免照片被拉伸变形
+        dataUrl = await htmlToImage.toPng(clone, { pixelRatio: 4, backgroundColor: '#fdfcff' });
+      } else if (typeof html2canvas === 'function') {
+        var canvas = await html2canvas(clone, {
+          scale: 4,
+          backgroundColor: '#fdfcff',
+          useCORS: true,
+          logging: false,
+        });
+        dataUrl = canvas.toDataURL('image/png');
+      } else {
+        window.alert('图片组件未加载，请刷新重试。');
+        return;
+      }
+
       var a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
+      a.href = dataUrl;
       a.download = (meal && meal.title ? meal.title : '餐食卡片') + '.png';
       document.body.appendChild(a);
       a.click();
