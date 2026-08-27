@@ -157,63 +157,7 @@
     el.innerHTML =
       '共 <b>' + total + '</b> 餐 · 覆盖 <b>' + months.length + '</b> 个月 · 每月约 <b>' +
       (total / months.length).toFixed(1) + '</b> 餐 · 最勤的一月：<b>' + monthLabel(busiest) +
-      '（' + monthCounts[busiest] + ' 餐）</b>' +
-      '<button class="stats-toggle" id="statsToggle">📊 统计</button>';
-  }
-
-  /** 统计面板：月度餐数柱状图 + 自制/外食占比 */
-  function renderStatsPanel() {
-    var p = $('statsPanel');
-    if (!p) return;
-    var meals = state.meals;
-    if (!meals.length) { p.innerHTML = '<p class="cal-hint">还没有记录。</p>'; return; }
-
-    var monthCounts = {};
-    meals.forEach(function (m) { var k = monthKey(m); monthCounts[k] = (monthCounts[k] || 0) + 1; });
-    var monthKeys = Object.keys(monthCounts).sort();
-    var max = 1;
-    monthKeys.forEach(function (k) { if (monthCounts[k] > max) max = monthCounts[k]; });
-
-    var bars = monthKeys.map(function (k) {
-      var c = monthCounts[k];
-      var h = Math.round((c / max) * 100);
-      return '<div class="stat-bar"><div class="stat-bar-fill" style="height:' + h +
-        '%" title="' + monthLabel(k) + ' ' + c + '餐"></div><span class="stat-bar-val">' + c +
-        '</span><span class="stat-bar-label">' + (+k.slice(5, 7)) + '月</span></div>';
-    }).join('');
-
-    var selfCount = meals.filter(function (m) { return m.category === '自制'; }).length;
-    var outCount = meals.filter(function (m) { return m.category === '外食'; }).length;
-    var total = meals.length || 1;
-    var selfPct = Math.round((selfCount / total) * 100);
-    var outPct = 100 - selfPct;
-
-    function ratioRow(label, cls, pct, count) {
-      return '<div class="stat-ratio-row"><span class="ratio-label">' + label + '</span>' +
-        '<div class="ratio-track"><div class="ratio-fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
-        '<span class="ratio-num">' + pct + '% · ' + count + ' 餐</span></div>';
-    }
-
-    p.innerHTML =
-      '<h4 class="stats-panel-title">月度餐数</h4>' +
-      '<div class="stat-bars">' + bars + '</div>' +
-      '<h4 class="stats-panel-title">自制 / 外食 占比</h4>' +
-      '<div class="stat-ratios">' +
-        ratioRow('自制', 'self', selfPct, selfCount) +
-        ratioRow('外食', 'out', outPct, outCount) +
-      '</div>';
-  }
-
-  /** 展开 / 收起统计面板 */
-  function toggleStats() {
-    var p = $('statsPanel');
-    if (!p) return;
-    if (p.hidden) {
-      renderStatsPanel();
-      p.hidden = false;
-    } else {
-      p.hidden = true;
-    }
+      '（' + monthCounts[busiest] + ' 餐）</b>';
   }
 
   /* ---------- 筛选 ---------- */
@@ -1479,11 +1423,6 @@
     if (pd) pd.addEventListener('click', batchDelete);
     var px = document.getElementById('batchExitBtn');
     if (px) px.addEventListener('click', exitBatch);
-
-    // 统计面板开关（按钮是动态渲染的，用 document 委托）
-    document.addEventListener('click', function (e) {
-      if (e.target.id === 'statsToggle') toggleStats();
-    });
 
     var filtersEl = $('filters');
     if (filtersEl) filtersEl.addEventListener('click', function (e) {
