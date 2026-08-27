@@ -23,6 +23,7 @@
     calYear: 0,          // 日历当前显示的年
     calMonth: 0,         // 日历当前显示的月（1-12）
     calSelected: '',     // 日历中选中的日期 'YYYY-MM-DD'（空 = 未选中）
+    batch: { active: false, selected: {} }, // 批量模式：{ active: 是否开启, selected: { id: true } }
     zoom: 1,             // 页面缩放
     viewZoom: 1,         // 详情页照片缩放
     viewPhotos: [],      // 详情页当前餐的照片数组
@@ -156,7 +157,63 @@
     el.innerHTML =
       '共 <b>' + total + '</b> 餐 · 覆盖 <b>' + months.length + '</b> 个月 · 每月约 <b>' +
       (total / months.length).toFixed(1) + '</b> 餐 · 最勤的一月：<b>' + monthLabel(busiest) +
-      '（' + monthCounts[busiest] + ' 餐）</b>';
+      '（' + monthCounts[busiest] + ' 餐）</b>' +
+      '<button class="stats-toggle" id="statsToggle">📊 统计</button>';
+  }
+
+  /** 统计面板：月度餐数柱状图 + 自制/外食占比 */
+  function renderStatsPanel() {
+    var p = $('statsPanel');
+    if (!p) return;
+    var meals = state.meals;
+    if (!meals.length) { p.innerHTML = '<p class="cal-hint">还没有记录。</p>'; return; }
+
+    var monthCounts = {};
+    meals.forEach(function (m) { var k = monthKey(m); monthCounts[k] = (monthCounts[k] || 0) + 1; });
+    var monthKeys = Object.keys(monthCounts).sort();
+    var max = 1;
+    monthKeys.forEach(function (k) { if (monthCounts[k] > max) max = monthCounts[k]; });
+
+    var bars = monthKeys.map(function (k) {
+      var c = monthCounts[k];
+      var h = Math.round((c / max) * 100);
+      return '<div class="stat-bar"><div class="stat-bar-fill" style="height:' + h +
+        '%" title="' + monthLabel(k) + ' ' + c + '餐"></div><span class="stat-bar-val">' + c +
+        '</span><span class="stat-bar-label">' + (+k.slice(5, 7)) + '月</span></div>';
+    }).join('');
+
+    var selfCount = meals.filter(function (m) { return m.category === '自制'; }).length;
+    var outCount = meals.filter(function (m) { return m.category === '外食'; }).length;
+    var total = meals.length || 1;
+    var selfPct = Math.round((selfCount / total) * 100);
+    var outPct = 100 - selfPct;
+
+    function ratioRow(label, cls, pct, count) {
+      return '<div class="stat-ratio-row"><span class="ratio-label">' + label + '</span>' +
+        '<div class="ratio-track"><div class="ratio-fill ' + cls + '" style="width:' + pct + '%"></div></div>' +
+        '<span class="ratio-num">' + pct + '% · ' + count + ' 餐</span></div>';
+    }
+
+    p.innerHTML =
+      '<h4 class="stats-panel-title">月度餐数</h4>' +
+      '<div class="stat-bars">' + bars + '</div>' +
+      '<h4 class="stats-panel-title">自制 / 外食 占比</h4>' +
+      '<div class="stat-ratios">' +
+        ratioRow('自制', 'self', selfPct, selfCount) +
+        ratioRow('外食', 'out', outPct, outCount) +
+      '</div>';
+  }
+
+  /** 展开 / 收起统计面板 */
+  function toggleStats() {
+    var p = $('statsPanel');
+    if (!p) return;
+    if (p.hidden) {
+      renderStatsPanel();
+      p.hidden = false;
+    } else {
+      p.hidden = true;
+    }
   }
 
   /* ---------- 筛选 ---------- */
@@ -187,6 +244,8 @@
       // 添加按钮独立一行，右侧放「列表/日历」切换，避免挤开「餐次」标签
       html += '<div class="filter-group toolbar-row">' +
         '<button class="btn btn-primary" id="addBtn">＋ 添加一餐</button>' +
+        '<button class="btn' + (state.batch.active ? ' active' : '') + '" id="batchToggleBtn">' +
+          (state.batch.active ? '退出批量' : '批量') + '</button>' +
         '<div class="view-switch" role="tablist">' +
           '<button class="view-tab' + (state.viewMode === 'list' ? ' active' : '') + '" data-view="list" role="tab">列表</button>' +
           '<button class="view-tab' + (state.viewMode === 'calendar' ? ' active' : '') + '" data-view="calendar" role="tab">日历</button>' +
@@ -267,7 +326,7 @@
       : '';
 
     var actions = '';
-    if (state.serverMode) {
+    if (state.serverMode && !state.batch.active) {
       actions =
         '<div class="card-actions">' +
           '<button class="mini-btn" data-action="save-img" data-id="' + id + '" title="把这张卡片保存为图片">存图</button>' +
@@ -277,7 +336,9 @@
     }
 
     return (
-      '<article class="card' + (m.notes ? '' : ' no-notes') + '" data-id="' + id + '" tabindex="0">' +
+      '<article class="card' + (m.notes ? '' : ' no-notes') + (state.batch.active ? ' batch' : '') +
+        (state.batch.active && state.batch.selected[m.id] ? ' checked' : '') + '" data-id="' + id + '" tabindex="0">' +
+        (state.batch.active ? '<span class="card-check" data-check="1"><span class="tick"></span></span>' : '') +
         '<div class="card-photo-wrap">' +
           '<img class="card-photo" src="' + escapeHtml(photos[0]) + '" alt="' + escapeHtml(m.title) + '" loading="lazy" />' +
           countBadge +
@@ -1274,6 +1335,89 @@
     }
   }
 
+  /* ---------- 批量模式 ---------- */
+
+  function batchCount() { return Object.keys(state.batch.selected).length; }
+
+  function enterBatch() {
+    state.batch.active = true;
+    state.batch.selected = {};
+    render();
+    renderBatchBar();
+  }
+
+  function exitBatch() {
+    state.batch.active = false;
+    state.batch.selected = {};
+    render();
+    renderBatchBar();
+  }
+
+  function toggleBatchSelect(id) {
+    var s = state.batch.selected;
+    if (s[id]) delete s[id];
+    else s[id] = true;
+    var card = document.querySelector('.card[data-id="' + CSS.escape(id) + '"]');
+    if (card) card.classList.toggle('checked', !!s[id]);
+    renderBatchBar();
+  }
+
+  function batchSelectAll() {
+    var list = filteredMeals();
+    var allSel = list.every(function (m) { return state.batch.selected[m.id]; });
+    if (allSel) list.forEach(function (m) { delete state.batch.selected[m.id]; });
+    else list.forEach(function (m) { state.batch.selected[m.id] = true; });
+    render();
+    renderBatchBar();
+  }
+
+  function renderBatchBar() {
+    var bar = $('batchBar');
+    if (!bar) return;
+    var countEl = $('batchCount');
+    if (countEl) countEl.textContent = batchCount();
+    bar.classList.toggle('show', state.batch.active);
+  }
+
+  async function batchApply() {
+    var ids = Object.keys(state.batch.selected);
+    if (!ids.length) return window.alert('请先勾选记录。');
+    var category = $('batchCategory').value;
+    var meal = $('batchMeal').value;
+    var body = { ids: ids };
+    if (category) body.category = category;
+    if (meal) body.meal = meal;
+    if (!category && !meal) return window.alert('请选择要设置的分类或餐次。');
+    try {
+      var r = await fetch('/api/meals/batch-update', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      var j = await r.json();
+      if (!j.ok) return window.alert('批量修改失败：' + (j.error || ''));
+      await fetchData();
+      exitBatch();
+    } catch (e) {
+      window.alert('批量修改失败，请检查服务是否还在运行。');
+    }
+  }
+
+  async function batchDelete() {
+    var ids = Object.keys(state.batch.selected);
+    if (!ids.length) return window.alert('请先勾选记录。');
+    if (!window.confirm('确定删除选中的 ' + ids.length + ' 条记录？（照片文件不会被删除）')) return;
+    try {
+      var r = await fetch('/api/meals/batch-delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: ids }),
+      });
+      var j = await r.json();
+      if (!j.ok) return window.alert('批量删除失败：' + (j.error || ''));
+      await fetchData();
+      exitBatch();
+    } catch (e) {
+      window.alert('批量删除失败，请检查服务是否还在运行。');
+    }
+  }
+
   /* ---------- 事件绑定 ---------- */
 
   function bindEvents() {
@@ -1326,12 +1470,28 @@
       switchViewPhoto(parseInt(t.dataset.index, 10));
     });
 
+    // 批量操作条按钮
+    var pl = document.getElementById('batchSelectAllBtn');
+    if (pl) pl.addEventListener('click', batchSelectAll);
+    var pa = document.getElementById('batchApplyBtn');
+    if (pa) pa.addEventListener('click', batchApply);
+    var pd = document.getElementById('batchDeleteBtn');
+    if (pd) pd.addEventListener('click', batchDelete);
+    var px = document.getElementById('batchExitBtn');
+    if (px) px.addEventListener('click', exitBatch);
+
+    // 统计面板开关（按钮是动态渲染的，用 document 委托）
+    document.addEventListener('click', function (e) {
+      if (e.target.id === 'statsToggle') toggleStats();
+    });
+
     var filtersEl = $('filters');
     if (filtersEl) filtersEl.addEventListener('click', function (e) {
       var btn = e.target.closest('button');
       if (!btn) return;
       // 「添加一餐」按钮由 filter 栏动态渲染，委托到容器上
       if (btn.id === 'addBtn') { openDialog('add', null); return; }
+      if (btn.id === 'batchToggleBtn') { state.batch.active ? exitBatch() : enterBatch(); return; }
       if (btn.dataset.view !== undefined) {
         // 列表 / 日历 视图切换
         state.viewMode = btn.dataset.view;
@@ -1356,6 +1516,11 @@
     var calendarEl = $('calendar');
     if (calendarEl) {
       calendarEl.addEventListener('click', function (e) {
+        // 批量模式下点击卡片 = 勾选
+        if (state.batch.active) {
+          var bcard = e.target.closest('.card');
+          if (bcard) { e.stopPropagation(); toggleBatchSelect(bcard.dataset.id); return; }
+        }
         // 编辑 / 删除（当天卡片）
         var act = e.target.closest('[data-action]');
         if (act) {
@@ -1420,6 +1585,11 @@
     var timelineEl = $('timeline');
     if (timelineEl) {
       timelineEl.addEventListener('click', function (e) {
+        // 批量模式下点击卡片 = 勾选
+        if (state.batch.active) {
+          var bcard = e.target.closest('.card');
+          if (bcard) { e.stopPropagation(); toggleBatchSelect(bcard.dataset.id); return; }
+        }
         var act = e.target.closest('[data-action]');
         if (act) {
           e.stopPropagation();

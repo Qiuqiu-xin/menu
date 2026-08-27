@@ -277,6 +277,43 @@ function handleDelete(res, id) {
   ok(res, {});
 }
 
+/** 批量更新：给指定 id 的记录统一设置分类 / 餐次（未提供的字段保持不变） */
+async function handleBatchUpdate(req, res) {
+  const body = JSON.parse((await readBody(req)).toString('utf8'));
+  const ids = Array.isArray(body.ids) ? body.ids.filter((x) => typeof x === 'string') : [];
+  if (!ids.length) return fail(res, 400, '没有选中的记录');
+
+  const set = {};
+  if (typeof body.category === 'string' && CATEGORIES.includes(body.category)) set.category = body.category;
+  if (typeof body.meal === 'string' && MEALS.includes(body.meal)) set.meal = body.meal;
+  if (!Object.keys(set).length) return fail(res, 400, '没有要修改的字段');
+
+  const meals = loadMeals();
+  let updated = 0;
+  meals.forEach((m) => {
+    if (ids.includes(m.id)) {
+      if (set.category !== undefined) m.category = set.category;
+      if (set.meal !== undefined) m.meal = set.meal;
+      updated++;
+    }
+  });
+  saveMeals(meals);
+  ok(res, { updated });
+}
+
+/** 批量删除：删除指定 id 的记录（照片文件不删） */
+async function handleBatchDelete(req, res) {
+  const body = JSON.parse((await readBody(req)).toString('utf8'));
+  const ids = Array.isArray(body.ids) ? body.ids.filter((x) => typeof x === 'string') : [];
+  if (!ids.length) return fail(res, 400, '没有选中的记录');
+
+  const meals = loadMeals();
+  const before = meals.length;
+  const kept = meals.filter((m) => !ids.includes(m.id));
+  saveMeals(kept);
+  ok(res, { deleted: before - kept.length });
+}
+
 /* ---------- 站点设置（标题 / 副标题） ---------- */
 
 function handleGetSite(res) {
@@ -329,6 +366,8 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/data' && method === 'GET') return handleList(res);
     if (path === '/api/photos' && method === 'GET') return handlePhotos(res);
     if (path === '/api/meals' && method === 'POST') return await handleCreate(req, res);
+    if (path === '/api/meals/batch-update' && method === 'POST') return await handleBatchUpdate(req, res);
+    if (path === '/api/meals/batch-delete' && method === 'POST') return await handleBatchDelete(req, res);
     if (path === '/api/upload' && method === 'POST') return await handleUpload(req, res);
     if (path === '/api/site' && method === 'GET') return handleGetSite(res);
     if (path === '/api/site' && method === 'PUT') return await handlePutSite(req, res);

@@ -18,6 +18,7 @@
 
       <main class="container">
         <nav class="filters" id="filters" aria-label="筛选"></nav>
+        <div class="stats-panel" id="statsPanel" hidden></div>
         <section id="timeline" aria-label="用餐时间线"></section>
         <section id="calendar" class="calendar" aria-label="日历视图" hidden></section>
         <p class="empty" id="empty" hidden></p>
@@ -165,6 +166,27 @@
     </label>
 
     <button class="btn color-reset" id="colorReset">恢复默认</button>
+  </div>
+
+  <!-- 批量操作条 -->
+  <div class="batch-bar" id="batchBar">
+    <button class="btn" id="batchSelectAllBtn">全选</button>
+    <span class="batch-count">已选 <b id="batchCount">0</b> 项</span>
+    <select id="batchCategory" class="text-input batch-select" title="设置分类">
+      <option value="">分类…</option>
+      <option>自制</option>
+      <option>外食</option>
+    </select>
+    <select id="batchMeal" class="text-input batch-select" title="设置餐次">
+      <option value="">餐次…</option>
+      <option>早餐</option>
+      <option>午餐</option>
+      <option>晚餐</option>
+      <option>加餐</option>
+    </select>
+    <button class="btn btn-primary" id="batchApplyBtn">应用</button>
+    <button class="btn danger" id="batchDeleteBtn">删除选中</button>
+    <button class="btn" id="batchExitBtn">退出</button>
   </div>
 
   <script src="libs/html2canvas.min.js"></script>
