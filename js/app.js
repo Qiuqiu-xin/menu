@@ -1214,10 +1214,10 @@
       if (typeof htmlToImage !== 'undefined' && htmlToImage.toPng) {
         // 优先用 html-to-image：基于 SVG foreignObject 原生渲染，正确支持 object-fit:cover，
         // 避免照片被拉伸变形
-        dataUrl = await htmlToImage.toPng(clone, { pixelRatio: 4, backgroundColor: '#fdfcff' });
+        dataUrl = await htmlToImage.toPng(clone, { pixelRatio: 6, backgroundColor: '#fdfcff' });
       } else if (typeof html2canvas === 'function') {
         var canvas = await html2canvas(clone, {
-          scale: 4,
+          scale: 6,
           backgroundColor: '#fdfcff',
           useCORS: true,
           logging: false,
