@@ -1184,8 +1184,56 @@
     }
   }
 
+  /** 把一张图片按 4:3 居中裁切，生成 dataURL（模拟 object-fit:cover） */
+  function toCoverDataUrl(img, outW, outH) {
+    var nw = img.naturalWidth, nh = img.naturalHeight;
+    if (!nw || !nh) return img.src;
+    var c = document.createElement('canvas');
+    c.width = outW; c.height = outH;
+    var ctx = c.getContext('2d');
+    var t = outW / outH;
+    var s = nw / nh;
+    var sw, sh, sx, sy;
+    if (s > t) { sh = nh; sw = nh * t; sx = (nw - sw) / 2; sy = 0; }
+    else { sw = nw; sh = nw / t; sx = 0; sy = (nh - sh) / 2; }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+    return c.toDataURL('image/jpeg', 0.92);
+  }
+
+  /**
+   * 在克隆卡片里，把照片预先裁切为 4:3 的 dataURL、并将 object-fit 置为 fill。
+   * 这样 html2canvas 渲染时图片比例与相框一致，不会被拉伸变形。
+   */
+  async function fixCardPhotos(clone) {
+    var imgs = Array.prototype.slice.call(clone.querySelectorAll('img.card-photo'));
+    if (!imgs.length) return;
+    var cw = clone.offsetWidth || 300;
+    var outW = Math.round(cw * 6);
+    var outH = Math.round(outW * 3 / 4);
+    await Promise.all(imgs.map(function (img) {
+      return new Promise(function (resolve) {
+        function process() {
+          try {
+            img.src = toCoverDataUrl(img, outW, outH);
+            img.style.objectFit = 'fill';
+          } catch (e) { /* 忽略，交给 html2canvas 默认处理 */ }
+          resolve();
+        }
+        if (img.complete && img.naturalWidth) process();
+        else {
+          img.onload = process;
+          img.onerror = resolve;
+        }
+      });
+    }));
+  }
+
   /** 把一张卡片保存为 PNG 图片 */
   async function saveCardAsImage(id) {
+    if (typeof html2canvas === 'undefined') {
+      window.alert('图片组件未加载，请刷新重试。');
+      return;
+    }
     var meal = findMeal(id);
     var src = document.querySelector('.card[data-id="' + CSS.escape(id) + '"]');
     if (!src) return;
@@ -1203,33 +1251,18 @@
     document.body.appendChild(holder);
 
     try {
-      // 确保照片加载完成
-      var imgs = Array.prototype.slice.call(clone.querySelectorAll('img'));
-      await Promise.all(imgs.map(function (img) {
-        if (img.complete && img.naturalWidth) return Promise.resolve();
-        return new Promise(function (resolve) { img.onload = resolve; img.onerror = resolve; });
-      }));
+      // 先把照片裁切为 4:3，避免 html2canvas 不支持 object-fit 导致变形
+      await fixCardPhotos(clone);
 
-      var dataUrl;
-      if (typeof htmlToImage !== 'undefined' && htmlToImage.toPng) {
-        // 优先用 html-to-image：基于 SVG foreignObject 原生渲染，正确支持 object-fit:cover，
-        // 避免照片被拉伸变形
-        dataUrl = await htmlToImage.toPng(clone, { pixelRatio: 6, backgroundColor: '#fdfcff' });
-      } else if (typeof html2canvas === 'function') {
-        var canvas = await html2canvas(clone, {
-          scale: 6,
-          backgroundColor: '#fdfcff',
-          useCORS: true,
-          logging: false,
-        });
-        dataUrl = canvas.toDataURL('image/png');
-      } else {
-        window.alert('图片组件未加载，请刷新重试。');
-        return;
-      }
+      var canvas = await html2canvas(clone, {
+        scale: 6,
+        backgroundColor: '#fdfcff',
+        useCORS: true,
+        logging: false,
+      });
 
       var a = document.createElement('a');
-      a.href = dataUrl;
+      a.href = canvas.toDataURL('image/png');
       a.download = (meal && meal.title ? meal.title : '餐食卡片') + '.png';
       document.body.appendChild(a);
       a.click();
